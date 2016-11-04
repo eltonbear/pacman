@@ -1,47 +1,63 @@
 import numpy as np
 import dxfgrabber
 import cv2
+import inspect
+import math
 
 def main():
 	resolutionPower = 2
-	housingMaxLenInMM = 65
-	arrayLen = housingMaxLenInMM * 10 ** resolutionPower
-	XYoffset = (41.90 + 5, 28.25+ 5)
-	housing = np.ones((arrayLen ,arrayLen), np.uint8) * 255
-	housing = drawPartsFromDxf(housing, r"C:\Users\eltoshon\Desktop\housing.dxf", XYoffset, resolutionPower, arrayLen)
+	housingMaxXInMM = 25
+	housingMaxYInMM = 16
+
+
+	arrayXlen = housingMaxXInMM * 10 ** resolutionPower 
+	arrayYlen = housingMaxYInMM * 10 ** resolutionPower 
+	XYoffset = (0, 0)
+
+	housing = np.zeros((arrayYlen, arrayXlen), np.uint8)
+	housing = drawPartsFromDxf(housing, r"C:\Users\eltoshon\Desktop\drawings\housingSmall.dxf", XYoffset, resolutionPower)
+
+	firstPoint = findFirstPoint(housing)
+
 	showImage(housing)
 
-def drawPartsFromDxf(pixelArray, dxfFilePath, offset, resolution, arrayLength):
-	black = (0, 0, 0)
+
+def drawPartsFromDxf(pixelArray, dxfFilePath, offset, resolution):
+	pixelArray[5][2] = 0
+	white = 255
 	lineWidth = 3
 	dxf = dxfgrabber.readfile(dxfFilePath)
 	entity = dxf.entities
 	for part in entity:
 		if part.dxftype == 'LINE':  # maybe need to add polyline
-			startP, endP = linePointsConversion(part.start, part.end, offset, resolution, arrayLength)
-			pixelArray = cv2.line(pixelArray, startP, endP, black, lineWidth)
+
+			startP, endP = linePointsConversion(part.start, part.end, offset, resolution)
+			pixelArray = cv2.line(pixelArray, startP, endP, white, lineWidth)
 			
 		if part.dxftype == 'ARC':
 			center = part.center
 			radius = part.radius
-			deltaAngle = abs(part.end_angle - part.start_angle)
+			# print(center, radius, part.start_angle, part.end_angle, part.end_angle < part.start_angle)
+
 			if part.end_angle < part.start_angle:
-				deltaAngle = 360 - deltaAngle
-			sAngle = 360 - part.end_angle
-			eAngle = sAngle + deltaAngle
-			center, radius = circleConversion(center, radius, offset, resolution, arrayLength)
-			pixelArray = cv2.ellipse(pixelArray, center, (radius, radius), 0, sAngle, eAngle, black, lineWidth)
+				part.start_angle = part.start_angle - 360
+
+			center, radius = circleConversion(center, radius, offset, resolution)
+			pixelArray = cv2.ellipse(pixelArray, center, (radius, radius), 0, part.start_angle, part.end_angle, white, lineWidth)
 
 		if part.dxftype == 'CIRCLE':
 			center = part.center
 			radius = part.radius
-			center, radius = circleConversion(center, radius, offset, resolution, arrayLength)
-			pixelArray = cv2.circle(pixelArray, center, radius, black, lineWidth)
+
+			center, radius = circleConversion(center, radius, offset, resolution)
+			pixelArray = cv2.circle(pixelArray, center, radius, white, lineWidth)
+	# pixelArray = cv2.circle(pixelArray, (500,100), 50, white, lineWidth)
+
 
 	return pixelArray
 
-def circleConversion(center, radius, offset, resolution, flip):
-	center = ((int((center[0] + offset[0]) * 10**resolution)), flip - int((center[1] + offset[1]) * 10**resolution))
+def circleConversion(center, radius, offset, resolution):
+	center = ((int((center[0] + offset[0]) * 10**resolution)), int((center[1] + offset[1]) * 10**resolution))
 	radius = radius * 10**(resolution)
 	if radius.is_integer():
 		radius = int(radius)
@@ -49,7 +65,7 @@ def circleConversion(center, radius, offset, resolution, flip):
 		radius = int(radius) + 1
 	return center, radius
 
-def linePointsConversion(sPoint, ePoint, offset, resolution, flip):
+def linePointsConversion(sPoint, ePoint, offset, resolution):
 	sPointX = (sPoint[0] + offset[0]) * 10**(resolution+1)
 	sPointY = (sPoint[1] + offset[1]) * 10**(resolution+1)
 	ePointX = (ePoint[0] + offset[0]) * 10**(resolution+1)
@@ -81,14 +97,24 @@ def linePointsConversion(sPoint, ePoint, offset, resolution, flip):
 			ePointY = int(ePointY/10)
 		sPointY = int(sPointY/10)
 
-	ePointY = flip - ePointY
-	sPointY = flip - sPointY
+	ePointY = ePointY
+	sPointY = sPointY
 	return (sPointX, sPointY), (ePointX, ePointY)
 
 def showImage(pixelArray):
+	flippedImage = cv2.flip(pixelArray, 0)
 	cv2.namedWindow('window', cv2.WINDOW_KEEPRATIO)
-	cv2.imshow('window', pixelArray)
+	cv2.imshow('window', flippedImage)
 	cv2.waitKey(0)
-	cv2.imwrite(r"C:\Users\eltoshon\Desktop\housingIMAGE.jpeg", pixelArray)
+	cv2.imwrite(r"C:\Users\eltoshon\Desktop\drawings\housnigSmall.jpeg", flippedImage)
+
+def findFirstPoint(pixelArray):
+	for yIndex in range(0, len(pixelArray)):
+		for xIndex in range(0, len(pixelArray[0])):
+			if pixelArray[yIndex][xIndex] != 0:
+				print(xIndex, yIndex)
+				return (xIndex, yIndex)
+
+
 
 main()
