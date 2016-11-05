@@ -3,52 +3,72 @@ import dxfgrabber
 import cv2
 import math
 
-def createMap(dxfFile):
-	resolutionPower = 2
-	housingMaxXInMM = 25
-	housingMaxYInMM = 16
+# In an array coordinate system positive Y points downward and postive X points to the right. To access an array value with a point (x, y), do array[y][x]. In the case below y = a,b,c,d. x = 0,1,2,3
+#[a]->[0,1,2,3...]
+#[b]->[0,1,2,3...]
+#[c]->[0,1,2,3...]
+#[d]->[0,1,2,3...]
+#[e]->[0,1,2,3...]
+class pixelMap:
+	def __init__(self, dxfFile):
+		self.backGrdColor = 0
+		self.wallColor = 255
+		resolutionPower = 2
+		housingMaxXInMM = 25
+		housingMaxYInMM = 16
 
-	arrayXlen = housingMaxXInMM * 10 ** resolutionPower 
-	arrayYlen = housingMaxYInMM * 10 ** resolutionPower 
-	XYoffset = (0, 0)
+		self.arrayXlen = housingMaxXInMM * 10 ** resolutionPower 
+		self.arrayYlen = housingMaxYInMM * 10 ** resolutionPower 
+		XYoffset = (0, 0)
 
-	housing = np.zeros((arrayYlen, arrayXlen), np.uint8)
-	housing = drawPartsFromDxf(housing, dxfFile, XYoffset, resolutionPower)
+		self.housingImg = np.zeros((self.arrayYlen, self.arrayXlen), np.uint8)
+		self.drawPartsFromDxf(self.housingImg, dxfFile, XYoffset, resolutionPower)
 
-	firstPoint = findFirstPoint(housing)
-
-	return housing, firstPoint
+		self.firstPoint = findFirstPoint(self.housingImg)
 
 
-def drawPartsFromDxf(pixelArray, dxfFilePath, offset, resolution):
-	white = 255
-	lineWidth = 3
-	dxf = dxfgrabber.readfile(dxfFilePath)
-	entity = dxf.entities
-	for part in entity:
-		if part.dxftype == 'LINE':  # maybe need to add polyline
+	def drawPartsFromDxf(self, pixelArray, dxfFilePath, offset, resolution):
+		lineWidth = 3
+		dxf = dxfgrabber.readfile(dxfFilePath)
+		entity = dxf.entities
+		for part in entity:
+			if part.dxftype == 'LINE':  # maybe need to add polyline
+				startP, endP = linePointsConversion(part.start, part.end, offset, resolution)
+				pixelArray = cv2.line(pixelArray, startP, endP, self.wallColor, lineWidth)
+				
+			if part.dxftype == 'ARC':
+				center = part.center
+				radius = part.radius
+				if part.end_angle < part.start_angle:
+					part.start_angle = part.start_angle - 360
 
-			startP, endP = linePointsConversion(part.start, part.end, offset, resolution)
-			pixelArray = cv2.line(pixelArray, startP, endP, white, lineWidth)
-			
-		if part.dxftype == 'ARC':
-			center = part.center
-			radius = part.radius
+				center, radius = circleConversion(center, radius, offset, resolution)
+				pixelArray = cv2.ellipse(pixelArray, center, (radius, radius), 0, part.start_angle, part.end_angle, self.wallColor, lineWidth)
 
-			if part.end_angle < part.start_angle:
-				part.start_angle = part.start_angle - 360
+			if part.dxftype == 'CIRCLE':
+				center = part.center
+				radius = part.radius
+				center, radius = circleConversion(center, radius, offset, resolution)
+				pixelArray = cv2.circle(pixelArray, center, radius, self.wallColor, lineWidth)
 
-			center, radius = circleConversion(center, radius, offset, resolution)
-			pixelArray = cv2.ellipse(pixelArray, center, (radius, radius), 0, part.start_angle, part.end_angle, white, lineWidth)
+	def inBounds(self, point):
+		(x, y) = point
+		return 0 <= x < self.arrayXlen and 0 <= y < self.arrayYlen
 
-		if part.dxftype == 'CIRCLE':
-			center = part.center
-			radius = part.radius
+	def passable(self, point):
+		return self.housingImg[point[1], point[0]] != self.wallColor
 
-			center, radius = circleConversion(center, radius, offset, resolution)
-			pixelArray = cv2.circle(pixelArray, center, radius, white, lineWidth)
+	def neighbors(self, point):
+		(x, y) = point
+		results = [(x+1, y), (x, y-1), (x-1, y), (x, y+1)]
+		if (x + y) % 2 == 0: results.reverse() # aesthetics
+		results = filter(self.inBounds, results)
+		results = filter(self.passable, results)
+		return results
 
-	return pixelArray
+	def getPixelArray(self):
+		return self.housingImg
+
 
 def circleConversion(center, radius, offset, resolution):
 	center = ((int((center[0] + offset[0]) * 10**resolution)), int((center[1] + offset[1]) * 10**resolution))
@@ -101,7 +121,25 @@ def showImage(pixelArray, saveImg):
 	cv2.imwrite(saveImg, flippedImage)
 
 def findFirstPoint(pixelArray):
+	# Find smallest x in a fixed y
 	for yIndex in range(0, len(pixelArray)):
 		for xIndex in range(0, len(pixelArray[0])):
 			if pixelArray[yIndex][xIndex] != 0:
 				return (xIndex, yIndex)
+
+# if __name__ == "__main__":
+# 	dxf = r"C:\Users\eltoshon\Desktop\drawings\housingPathFindTest\housingPathFindTest.dxf"
+# 	saveImg = r"C:\Users\eltoshon\Desktop\drawings\housingPathFindTest\housingPathFindTest.jpeg"
+# 	m = pixelMap(dxf)
+# 	fp = m.firstPoint
+# 	print(fp)
+# 	print(m.passable(fp))
+# 	print(m.passable((288, 184)))
+# 	print(m.passable((286, 184)))
+# 	print(m.passable((287, 185)))
+# 	print(m.passable((287, 183)))
+# 	n = list(m.neighbors(fp))
+# 	print(n)
+
+
+# 	showImage(m.getPixelArray(), saveImg)
