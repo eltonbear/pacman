@@ -8,7 +8,6 @@ def createMap(dxfFile):
 	housingMaxXInMM = 25
 	housingMaxYInMM = 16
 
-
 	arrayXlen = housingMaxXInMM * 10 ** resolutionPower 
 	arrayYlen = housingMaxYInMM * 10 ** resolutionPower 
 	XYoffset = (0, 0)
@@ -22,8 +21,7 @@ def createMap(dxfFile):
 
 
 def drawPartsFromDxf(pixelArray, dxfFilePath, offset, resolution):
-	pixelArray[5][2] = 0
-	white = 225
+	white = 255
 	lineWidth = 3
 	dxf = dxfgrabber.readfile(dxfFilePath)
 	entity = dxf.entities
@@ -36,7 +34,6 @@ def drawPartsFromDxf(pixelArray, dxfFilePath, offset, resolution):
 		if part.dxftype == 'ARC':
 			center = part.center
 			radius = part.radius
-			# print(center, radius, part.start_angle, part.end_angle, part.end_angle < part.start_angle)
 
 			if part.end_angle < part.start_angle:
 				part.start_angle = part.start_angle - 360
@@ -50,8 +47,6 @@ def drawPartsFromDxf(pixelArray, dxfFilePath, offset, resolution):
 
 			center, radius = circleConversion(center, radius, offset, resolution)
 			pixelArray = cv2.circle(pixelArray, center, radius, white, lineWidth)
-	# pixelArray = cv2.circle(pixelArray, (500,100), 50, white, lineWidth)
-
 
 	return pixelArray
 
@@ -96,8 +91,6 @@ def linePointsConversion(sPoint, ePoint, offset, resolution):
 			ePointY = int(ePointY/10)
 		sPointY = int(sPointY/10)
 
-	ePointY = ePointY
-	sPointY = sPointY
 	return (sPointX, sPointY), (ePointX, ePointY)
 
 def showImage(pixelArray, saveImg):
