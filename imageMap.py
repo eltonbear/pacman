@@ -15,8 +15,8 @@ class pixelMap:
 		self.backGrdColor = 0
 		self.wallColor = 255
 		resolutionPower = 2
-		housingMaxXInMM = 25
-		housingMaxYInMM = 16
+		housingMaxXInMM = 45
+		housingMaxYInMM = 60
 
 		self.arrayXlen = housingMaxXInMM * 10 ** resolutionPower 
 		self.arrayYlen = housingMaxYInMM * 10 ** resolutionPower 
@@ -59,13 +59,29 @@ class pixelMap:
 	def passable(self, point):
 		return self.housingImg[point[1], point[0]] != self.wallColor
 
+	# 4 ways
 	def getNeighbors(self, point):
 		(x, y) = point
 		neighbors = [(x+1, y), (x, y-1), (x-1, y), (x, y+1)]
-		costDict = {point: 1 for point in neighbors}
-		if (x + y) % 2 == 0: neighbors.reverse() # aesthetics
+		# if (x + y) % 2 == 0: neighbors.reverse() # aesthetics
 		neighbors = filter(self.inBounds, neighbors)
 		neighbors = filter(self.passable, neighbors)
+		costDict = {point: 1 for point in neighbors}
+
+		return neighbors, costDict
+
+	# 8 ways
+	def getNeighbors1(self, point):
+		(x, y) = point
+		D1 = 1
+		D2 = math.sqrt(2)
+		costDict = {(x+1, y): D1, (x+1, y-1): D2, (x, y-1):D1, (x-1, y-1): D2, (x-1, y): D1, (x-1, y+1): D2,(x, y+1): D1, (x+1, y+1): D2}
+		# neighbors = [(x+1, y), (x+1, y-1) (x, y-1), (x-1, y-1), (x-1, y), (x-1, y+1),(x, y+1), (x+1, y+1)]
+		neighbors = costDict.keys()
+		# if (x + y) % 2 == 0: neighbors.reverse() # aesthetics
+		neighbors = filter(self.inBounds, neighbors)
+		neighbors = filter(self.passable, neighbors)
+		
 		return neighbors, costDict
 
 	def getPixelArray(self):
