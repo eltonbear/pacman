@@ -9,6 +9,7 @@ import math
 #[c]->[0,1,2,3...]
 #[d]->[0,1,2,3...]
 #[e]->[0,1,2,3...]
+
 class pixelMap:
 	def __init__(self, dxfFile):
 		self.backGrdColor = 0
@@ -22,19 +23,19 @@ class pixelMap:
 		XYoffset = (0, 0)
 
 		self.housingImg = np.zeros((self.arrayYlen, self.arrayXlen), np.uint8)
-		self.drawPartsFromDxf(self.housingImg, dxfFile, XYoffset, resolutionPower)
+		self.drawPartsFromDxf(dxfFile, XYoffset, resolutionPower)
 
 		self.firstPoint = findFirstPoint(self.housingImg)
 
 
-	def drawPartsFromDxf(self, pixelArray, dxfFilePath, offset, resolution):
+	def drawPartsFromDxf(self, dxfFilePath, offset, resolution):
 		lineWidth = 3
 		dxf = dxfgrabber.readfile(dxfFilePath)
 		entity = dxf.entities
 		for part in entity:
 			if part.dxftype == 'LINE':  # maybe need to add polyline
 				startP, endP = linePointsConversion(part.start, part.end, offset, resolution)
-				pixelArray = cv2.line(pixelArray, startP, endP, self.wallColor, lineWidth)
+				self.housingImg = cv2.line(self.housingImg, startP, endP, self.wallColor, lineWidth)
 				
 			if part.dxftype == 'ARC':
 				center = part.center
@@ -43,13 +44,13 @@ class pixelMap:
 					part.start_angle = part.start_angle - 360
 
 				center, radius = circleConversion(center, radius, offset, resolution)
-				pixelArray = cv2.ellipse(pixelArray, center, (radius, radius), 0, part.start_angle, part.end_angle, self.wallColor, lineWidth)
+				self.housingImg = cv2.ellipse(self.housingImg, center, (radius, radius), 0, part.start_angle, part.end_angle, self.wallColor, lineWidth)
 
 			if part.dxftype == 'CIRCLE':
 				center = part.center
 				radius = part.radius
 				center, radius = circleConversion(center, radius, offset, resolution)
-				pixelArray = cv2.circle(pixelArray, center, radius, self.wallColor, lineWidth)
+				self.housingImg = cv2.circle(self.housingImg, center, radius, self.wallColor, lineWidth)
 
 	def inBounds(self, point):
 		(x, y) = point
@@ -58,13 +59,14 @@ class pixelMap:
 	def passable(self, point):
 		return self.housingImg[point[1], point[0]] != self.wallColor
 
-	def neighbors(self, point):
+	def getNeighbors(self, point):
 		(x, y) = point
-		results = [(x+1, y), (x, y-1), (x-1, y), (x, y+1)]
-		if (x + y) % 2 == 0: results.reverse() # aesthetics
-		results = filter(self.inBounds, results)
-		results = filter(self.passable, results)
-		return results
+		neighbors = [(x+1, y), (x, y-1), (x-1, y), (x, y+1)]
+		costDict = {point: 1 for point in neighbors}
+		if (x + y) % 2 == 0: neighbors.reverse() # aesthetics
+		neighbors = filter(self.inBounds, neighbors)
+		neighbors = filter(self.passable, neighbors)
+		return neighbors, costDict
 
 	def getPixelArray(self):
 		return self.housingImg
@@ -127,19 +129,35 @@ def findFirstPoint(pixelArray):
 			if pixelArray[yIndex][xIndex] != 0:
 				return (xIndex, yIndex)
 
+def covertToNpArrayPoint(points):
+
+	return np.array(points)
+
+def drawPolyline(pixelArray, points):
+
+	pixelArray =  cv2.polylines(pixelArray, [points], False, 150)
+
+	return pixelArray
+
 # if __name__ == "__main__":
 # 	dxf = r"C:\Users\eltoshon\Desktop\drawings\housingPathFindTest\housingPathFindTest.dxf"
 # 	saveImg = r"C:\Users\eltoshon\Desktop\drawings\housingPathFindTest\housingPathFindTest.jpeg"
 # 	m = pixelMap(dxf)
+# 	points = covertToNpArrayPoint([(1, 5),  (5, 9), (500, 25)])
+# 	drawPolyline(m.getPixelArray(), points)
 # 	fp = m.firstPoint
 # 	print(fp)
-# 	print(m.passable(fp))
-# 	print(m.passable((288, 184)))
-# 	print(m.passable((286, 184)))
-# 	print(m.passable((287, 185)))
-# 	print(m.passable((287, 183)))
-# 	n = list(m.neighbors(fp))
+# # 	print(m.passable(fp))
+# # 	print(m.passable((288, 184)))
+# # 	print(m.passable((286, 184)))
+# # 	print(m.passable((287, 185)))
+# # 	print(m.passable((287, 183)))
+# 	n, c= m.getNeighbors(fp)
+# 	n = list(n)
 # 	print(n)
+# 	print(c)
+	# print(c[(288, 184)])
+	# print(c[n[0]])
 
 
-# 	showImage(m.getPixelArray(), saveImg)
+	# showImage(m.getPixelArray(), saveImg)
