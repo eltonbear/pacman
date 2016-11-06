@@ -65,10 +65,11 @@ class pixelMap:
 	def getNeighbors(self, point):
 		(x, y) = point
 		neighbors = [(x+1, y), (x, y-1), (x-1, y), (x, y+1)]
+		costDict = {point: 1 for point in neighbors}
 		# if (x + y) % 2 == 0: neighbors.reverse() # aesthetics
 		neighbors = filter(self.inBounds, neighbors)
 		neighbors = filter(self.passable, neighbors)
-		costDict = {point: 1 for point in neighbors}
+
 
 		return neighbors, costDict
 

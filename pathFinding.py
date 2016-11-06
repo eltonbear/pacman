@@ -1,6 +1,7 @@
 import imageMap
 import util
 import time
+import math
 
 def aStarSearch(imageMapObject, startP, endP):
 	frontier = util.PriorityQueue()
@@ -18,7 +19,7 @@ def aStarSearch(imageMapObject, startP, endP):
 			newGCost = costSoFar[currentPoint] + neighborCosts[nextpoint]
 			if nextpoint not in costSoFar or newGCost < costSoFar[nextpoint]:
 				costSoFar[nextpoint] = newGCost
-				priority = newGCost + heuristicM(endP, nextpoint)
+				priority = newGCost + heuristicE(endP, nextpoint)
 				frontier.push(nextpoint, priority)
 				cameFrom[nextpoint] = currentPoint
     
@@ -29,11 +30,19 @@ def heuristicM(p1, p2):
 	D = 1
 	return D*(abs(p1[0] - p2[0]) + abs(p1[1] - p2[1]))
 
+# Plus diagonal 
 def heuristicD(p1, p2):
-    dx = abs(p1[0] - p2[0])
-    dy = abs(p1[1] - p2[1])
-    D1, D2 = 1, math.sqrt(2)
-    return D1 * (dx + dy) + (D2 - 2 * D1) * min(dx, dy)
+	dx = abs(p1[0] - p2[0])
+	dy = abs(p1[1] - p2[1])
+	D1, D2 = 1, math.sqrt(2)
+	return D1 * (dx + dy) + (D2 - 2 * D1) * min(dx, dy)
+
+# # Euclidean Distance Heuristic
+def heuristicE(p1, p2):
+	D = 1
+	dx = abs(p1[0] - p2[0])
+	dy = abs(p1[1] - p2[1])
+	return D * math.sqrt(dx * dx + dy * dy)
 
 def reconstructPath(cameFrom, startP, goalP):
     current = goalP
@@ -53,8 +62,8 @@ if __name__ == "__main__":
 	save = r"C:\Users\eltoshon\Desktop\drawings\housingPathFindTest\housingPathFindTest2.jpeg"
 	housing = imageMap.pixelMap(dxf)
 	housingPixelArray = housing.getPixelArray()
-	startPoint = (600, 5000)
-	endPoint = (3700, 2600)
+	startPoint = (60, 500)
+	endPoint = (370, 260)
 	comesFrom, costSoFar = aStarSearch(housing, startPoint, endPoint)
 	path = reconstructPath(comesFrom, startPoint, endPoint)
 	# print(path)
