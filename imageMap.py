@@ -25,11 +25,13 @@ class pixelMap:
 		self.housingImg = np.zeros((self.arrayYlen, self.arrayXlen), np.uint8)
 		self.drawPartsFromDxf(dxfFile, XYoffset, resolutionPower)
 
-		self.firstPoint = findFirstPoint(self.housingImg)
+		self.firstPoint = self.findFirstPoint()
 
 
 	def drawPartsFromDxf(self, dxfFilePath, offset, resolution):
-		lineWidth = 3
+		# line width = 1 --> 1 pixel
+		# line width = 94-100 --> 50 pixel # 93 for now
+		lineWidth = 50
 		dxf = dxfgrabber.readfile(dxfFilePath)
 		entity = dxf.entities
 		for part in entity:
@@ -87,6 +89,13 @@ class pixelMap:
 	def getPixelArray(self):
 		return self.housingImg
 
+	def findFirstPoint(self):
+		# Find smallest x in a fixed y
+		for yIndex in range(0, self.arrayYlen):
+			for xIndex in range(0, self.arrayXlen ):
+				if not self.passable((xIndex, yIndex)):
+					return (xIndex, yIndex)
+
 
 def circleConversion(center, radius, offset, resolution):
 	center = ((int((center[0] + offset[0]) * 10**resolution)), int((center[1] + offset[1]) * 10**resolution))
@@ -138,13 +147,6 @@ def showImage(pixelArray, saveImg):
 	cv2.waitKey(0)
 	cv2.imwrite(saveImg, flippedImage)
 
-def findFirstPoint(pixelArray):
-	# Find smallest x in a fixed y
-	for yIndex in range(0, len(pixelArray)):
-		for xIndex in range(0, len(pixelArray[0])):
-			if pixelArray[yIndex][xIndex] != 0:
-				return (xIndex, yIndex)
-
 def covertToNpArrayPoint(points):
 
 	return np.array(points)
@@ -172,8 +174,8 @@ def drawPolyline(pixelArray, points):
 # 	n = list(n)
 # 	print(n)
 # 	print(c)
-	# print(c[(288, 184)])
-	# print(c[n[0]])
+# 	print(c[(288, 184)])
+# 	print(c[n[0]])
 
 
-	# showImage(m.getPixelArray(), saveImg)
+# 	showImage(m.getPixelArray(), saveImg)

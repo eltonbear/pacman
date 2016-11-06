@@ -49,8 +49,8 @@ def reconstructPath(cameFrom, startP, goalP):
 if __name__ == "__main__":
 	start_time = time.time()
 
-	dxf = r"C:\Users\eltoshon\Desktop\drawings\housingPathFindTest\housingPathFindTest10.dxf"
-	save = r"C:\Users\eltoshon\Desktop\drawings\housingPathFindTest\housingPathFindTest10.jpeg"
+	dxf = r"C:\Users\eltoshon\Desktop\drawings\housingPathFindTest\housingPathFindTest2.dxf"
+	save = r"C:\Users\eltoshon\Desktop\drawings\housingPathFindTest\housingPathFindTest2.jpeg"
 	housing = imageMap.pixelMap(dxf)
 	housingPixelArray = housing.getPixelArray()
 	startPoint = (600, 5000)
@@ -65,5 +65,6 @@ if __name__ == "__main__":
 	imageMap.showImage(housingPixelArray, save)
 	end_time = time.time()
 	print(end_time- start_time)
+	print(housing.firstPoint)
 
 
