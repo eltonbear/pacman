@@ -12,29 +12,33 @@ import math
 
 class pixelMap:
 	def __init__(self, dxfFile):
+		self.dxfObject = dxfgrabber.readfile(dxfFile)
+		self.unins = 'mm'
 		self.backGrdColor = 0
 		self.wallColor = 255
 		self.resolutionPower = 2
-		housingMaxXInMM = 45
-		housingMaxYInMM = 60
+		self.housingMaxXInMM = 0
+		self.housingMaxYInMM = 0
+		self.XYoffset = (0, 0)
+		self.XYmin = (0, 0)	
 
-		self.arrayXlen = housingMaxXInMM * 10 ** self.resolutionPower 
-		self.arrayYlen = housingMaxYInMM * 10 ** self.resolutionPower 
-		XYoffset = (0, 0)
+		self.getMaxAndMinXY()
+
+		self.arrayXlen = self.housingMaxXInMM * 10 ** self.resolutionPower 
+		self.arrayYlen = self.housingMaxYInMM * 10 ** self.resolutionPower 
 
 		self.housingImg = np.zeros((self.arrayYlen, self.arrayXlen), np.uint8)
 		self.contourImgPlain = np.copy(self.housingImg)
-		self.drawPartsFromDxf(dxfFile, XYoffset, 93, 2)
+		self.drawPartsFromDxf(93, 2)
 		self.contourImg = np.copy(self.housingImg)
 		self.contourImg = cv2.bilateralFilter(self.contourImg, 9, 80, 80)
-
 		
-	def drawPartsFromDxf(self, dxfFilePath, offset, lineWidth1, lineWidth2):
+	def drawPartsFromDxf(self, lineWidth1, lineWidth2):
 		# line width = 1 --> 1 pixel
 		# line width = 94-100 --> 50 pixel # 93 for now
-		dxf = dxfgrabber.readfile(dxfFilePath)
-		entity = dxf.entities
-		for part in entity:
+		entities = self.dxfObject.entities
+		offset = self.XYoffset
+		for part in entities:
 			if part.dxftype == 'LINE':  # maybe need to add polyline
 				startP, endP = linePointsConversion(part.start, part.end, offset, self.resolutionPower)
 				cv2.line(self.housingImg, startP, endP, self.wallColor, lineWidth1)
@@ -138,7 +142,7 @@ class pixelMap:
 					p = np.zeros(2, np.uint8)
 					for point in approxPointsFlaten:
 						p = p + point
-					(cX,cY),radius = cv2.minEnclosingCircle(contour)
+					(cX, cY), radius = cv2.minEnclosingCircle(contour)
 					cX, cY = int(cX), int(cY)
 					print(approxPointsFlaten)
 					if abs(cX - int(p[0]/numOfApproxPoints)) < 6 and abs(cY - int(p[1]/numOfApproxPoints)) < 6:
@@ -158,6 +162,46 @@ class pixelMap:
 			# break
 
 		# print(approxPointsFlaten)
+
+	def getMaxAndMinXY(self):
+		entities = self.dxfObject.entities
+		xMax, xMin, yMax, yMin = 0, 0, 0, 0
+		for partIndex in range(0, len(entities)):
+			part = entities[partIndex]
+			if part.dxftype == 'LINE':
+				x1, y1 = part.start[0], part.start[1]
+				x2, y2 = part.end[0], part.end[1]
+				if partIndex == 0:
+					xMax, yMax = max(x1, x2), max(y1, y2)
+					xMin, yMin= min(x1, x2), min(y1, y2)
+				else:
+					xMax, yMax = max(xMax, x1, x2), max(yMax, y1, y2)
+					xMin, yMin= min(xMin, x1, x2), min(yMin, y1, y2)
+			elif part.dxftype == 'ARC' or part.dxftype == 'CIRCLE':
+				cx, cy, R = part.center[0], part.center[1], part.radius
+				xRight, yUp = cx + R, cy + R
+				xLeft, yDown = cx - R, cy - R
+				if partIndex == 0:
+					xMax, yMax = xRight, yUp
+					xMin, yMin = xLeft, yDown
+				else:
+					xMax, yMax = max(xMax, xRight), max(yMax, yUp)
+					xMin, yMin= min(xMin, xLeft), min(yMin, yDown)
+
+		xOffset, yOffset = 0, 0
+		if xMin <= 0:
+			xOffset = int(-(xMin)) + 2
+		elif xMin > 5:
+			xOffset = 5 - xMin 
+		if yMin <= 0:
+			yOffset = int(-(yMin)) + 2
+		elif yMin > 5:
+			yOffset = 5 - yMin 
+		self.XYmin = (xMin, yMin)
+		self.XYoffset = (xOffset, yOffset)
+		self.housingMaxXInMM = int(xMax - xMin) + 3
+		self.housingMaxYInMM = int(yMax - yMin) + 3
+		print(self.XYmin, self.XYoffset)
 
 def circleConversion(center, radius, offset, resolution):
 	center = ((int((center[0] + offset[0]) * 10**resolution)), int((center[1] + offset[1]) * 10**resolution))
