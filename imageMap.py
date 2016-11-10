@@ -15,8 +15,8 @@ class pixelMap:
 		self.backGrdColor = 0
 		self.wallColor = 255
 		self.resolutionPower = 2
-		housingMaxXInMM = 15
-		housingMaxYInMM = 10
+		housingMaxXInMM = 45
+		housingMaxYInMM = 60
 
 		self.arrayXlen = housingMaxXInMM * 10 ** self.resolutionPower 
 		self.arrayYlen = housingMaxYInMM * 10 ** self.resolutionPower 
@@ -24,8 +24,10 @@ class pixelMap:
 
 		self.housingImg = np.zeros((self.arrayYlen, self.arrayXlen), np.uint8)
 		self.contourImgPlain = np.copy(self.housingImg)
-		self.drawPartsFromDxf(dxfFile, XYoffset, 35, 1)
+		self.drawPartsFromDxf(dxfFile, XYoffset, 93, 2)
 		self.contourImg = np.copy(self.housingImg)
+		self.contourImg = cv2.bilateralFilter(self.contourImg, 9, 80, 80)
+
 		
 	def drawPartsFromDxf(self, dxfFilePath, offset, lineWidth1, lineWidth2):
 		# line width = 1 --> 1 pixel
@@ -38,7 +40,6 @@ class pixelMap:
 				cv2.line(self.housingImg, startP, endP, self.wallColor, lineWidth1)
 				cv2.line(self.contourImgPlain, startP, endP, self.wallColor, lineWidth2)
 
-				
 			if part.dxftype == 'ARC':
 				center = part.center
 				radius = part.radius
@@ -110,29 +111,53 @@ class pixelMap:
 		mode = cv2.RETR_CCOMP
 		approxMethod = cv2.CHAIN_APPROX_TC89_KCOS
 		_, contours, hierarchy = cv2.findContours(self.contourImg, mode, approxMethod)
-		print('number of contours:', len(contours))
-		edgeContourIndex = len(contours) - 2
-		firstHoleContourIndex = 1 
+		# print('number of contours:', len(contours))
 		parentIndex = 3
-
+		outerMostContour = max(contours, key = cv2.contourArea)
 		hierarchy = hierarchy[0]
-		for index in range(0, edgeContourIndex):
+
+		for index in range(0, len(contours)):
+			# index = 0
 			contour = contours[index]
-			if hierarchy[index][parentIndex] == -1:
-				if len(contour) > 150:
-					percentage = 0.002
+			numOfvertice = len(contour)
+
+			if hierarchy[index][parentIndex] == -1 and numOfvertice > 2 and not contour is outerMostContour:
+				if numOfvertice > 150:
+					percentage = 0.006
+				elif numOfvertice < 60:
+					percentage = 0.03
 				else:
-					percentage = 0.005
+					percentage = 0.009
 				epsilon = percentage*cv2.arcLength(contour, True)
 				approxPoints = cv2.approxPolyDP(contour, epsilon,True)
 				approxPointsFlaten = approxPoints.ravel().reshape((len(approxPoints),2))
-				print('number of points berfore/after:', len(contour), len(approxPointsFlaten))
+				numOfApproxPoints = len(approxPoints)
+				# print('index/number of points berfore/after:', index, numOfvertice, numOfApproxPoints)
 
-				new = np.zeros((10**3, 15*10**2), np.uint8)
-				drawPolyline(self.housingImg, approxPointsFlaten, True)
-				drawPolyline(self.contourImgPlain, approxPointsFlaten, True)
+				if numOfApproxPoints > 14 and numOfApproxPoints< 18: ### 15? 17? 16!
+					p = np.zeros(2, np.uint8)
+					for point in approxPointsFlaten:
+						p = p + point
+					(cX,cY),radius = cv2.minEnclosingCircle(contour)
+					cX, cY = int(cX), int(cY)
+					print(approxPointsFlaten)
+					if abs(cX - int(p[0]/numOfApproxPoints)) < 6 and abs(cY - int(p[1]/numOfApproxPoints)) < 6:
+						cv2.circle(self.contourImgPlain, (cX,cY), int(radius), 100, 2) ################################### add to a data structure for output
+						cv2.circle(self.housingImg, (cX,cY), int(radius), 100, 2)
+					else:
+						drawPolyline(self.contourImgPlain, approxPointsFlaten, True) ################################### add to a data structure for output
+						drawPolyline(self.housingImg, approxPointsFlaten, True)
+				else:
+					drawPolyline(self.contourImgPlain, approxPointsFlaten, True) ################################### add to a data structure for output
+					drawPolyline(self.housingImg, approxPointsFlaten, True)
 
-		print(hierarchy)
+				# if len(approxPointsFlaten) <13 and len(approxPointsFlaten)> 7: ?????????????????????????????????/
+				# 	x,y,w,h = cv2.boundingRect(contour) #### WORKs IF APPROXpOINTSfLATEN is between 7 and 13
+				# 	print(x,y,w,h)
+				# 	cv2.rectangle(self.contourImgPlain,(x,y),(x+w,y+h),100,2)
+			# break
+
+		# print(approxPointsFlaten)
 
 def circleConversion(center, radius, offset, resolution):
 	center = ((int((center[0] + offset[0]) * 10**resolution)), int((center[1] + offset[1]) * 10**resolution))
@@ -180,9 +205,9 @@ def linePointsConversion(sPoint, ePoint, offset, resolution):
 def showImage(pixelArray, saveImg):
 	flippedImage = cv2.flip(pixelArray, 0)
 	cv2.imwrite(saveImg, flippedImage)
-	cv2.namedWindow('window', cv2.WINDOW_KEEPRATIO)
-	cv2.imshow('window', flippedImage)
-	cv2.waitKey(0)
+	# cv2.namedWindow('window', cv2.WINDOW_KEEPRATIO)
+	# cv2.imshow('window', flippedImage)
+	# cv2.waitKey(0)
 
 def covertToNpArrayPoint(points):
 
@@ -190,26 +215,27 @@ def covertToNpArrayPoint(points):
 
 def drawPolyline(pixelArray, points, ifEnclosed):
 
-	cv2.polylines(pixelArray, [points], ifEnclosed, 100)
+	cv2.polylines(pixelArray, [points], ifEnclosed, 100, 2)
 
 
 
 if __name__ == "__main__":
-	# dxf = r"C:\Users\eltoshon\Desktop\drawings\housing\housing.dxf"
-	# saved = r"C:\Users\eltoshon\Desktop\drawings\housing\housing.jpeg"
+	f = r"C:\Users\eltoshon\Desktop\drawings\housing\housing.dxf"
+	saveImgc = r"C:\Users\eltoshon\Desktop\drawings\housing\housingContour.jpeg"
+	saveImg = r"C:\Users\eltoshon\Desktop\drawings\housing\housing.jpeg"
+
 
 	# m = pixelMap(dxf)
 	# img = m.getImageArray()
 	# showImage(m.getImageArray(), saved)
 
-	saveImg = r"C:\Users\eltoshon\Desktop\drawings\housingTest\housingSimpleTest3.jpeg"
-	saveImgc = r"C:\Users\eltoshon\Desktop\drawings\housingTest\housingSimpleTest3contour.jpeg"
+	# saveImg = r"C:\Users\eltoshon\Desktop\drawings\housingHalf\housingHalf.jpeg"
+	# saveImgc = r"C:\Users\eltoshon\Desktop\drawings\housingHalf\housingHalfContour.jpeg"
 
-	f = r"C:\Users\eltoshon\Desktop\drawings\housingTest\housingSimpleTest3.dxf"
+	# f = r"C:\Users\eltoshon\Desktop\drawings\housingHalf\housingHalf.dxf"
 	m = pixelMap(f)
 	img = m.getImageArray()
 	imgC = m.getContourArray()
-
 	m.getAndDrawContours()
 
 	showImage(imgC, saveImgc)
