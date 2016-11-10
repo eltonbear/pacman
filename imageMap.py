@@ -14,30 +14,30 @@ class pixelMap:
 	def __init__(self, dxfFile):
 		self.backGrdColor = 0
 		self.wallColor = 255
-		resolutionPower = 2
-		housingMaxXInMM = 45
-		housingMaxYInMM = 60
+		self.resolutionPower = 2
+		housingMaxXInMM = 15
+		housingMaxYInMM = 10
 
-		self.arrayXlen = housingMaxXInMM * 10 ** resolutionPower 
-		self.arrayYlen = housingMaxYInMM * 10 ** resolutionPower 
+		self.arrayXlen = housingMaxXInMM * 10 ** self.resolutionPower 
+		self.arrayYlen = housingMaxYInMM * 10 ** self.resolutionPower 
 		XYoffset = (0, 0)
 
 		self.housingImg = np.zeros((self.arrayYlen, self.arrayXlen), np.uint8)
-		self.drawPartsFromDxf(dxfFile, XYoffset, resolutionPower)
-
-		self.firstPoint = self.findFirstPoint()
-
-
-	def drawPartsFromDxf(self, dxfFilePath, offset, resolution):
+		self.contourImgPlain = np.copy(self.housingImg)
+		self.drawPartsFromDxf(dxfFile, XYoffset, 35, 1)
+		self.contourImg = np.copy(self.housingImg)
+		
+	def drawPartsFromDxf(self, dxfFilePath, offset, lineWidth1, lineWidth2):
 		# line width = 1 --> 1 pixel
 		# line width = 94-100 --> 50 pixel # 93 for now
-		lineWidth = 50
 		dxf = dxfgrabber.readfile(dxfFilePath)
 		entity = dxf.entities
 		for part in entity:
 			if part.dxftype == 'LINE':  # maybe need to add polyline
-				startP, endP = linePointsConversion(part.start, part.end, offset, resolution)
-				self.housingImg = cv2.line(self.housingImg, startP, endP, self.wallColor, lineWidth)
+				startP, endP = linePointsConversion(part.start, part.end, offset, self.resolutionPower)
+				cv2.line(self.housingImg, startP, endP, self.wallColor, lineWidth1)
+				cv2.line(self.contourImgPlain, startP, endP, self.wallColor, lineWidth2)
+
 				
 			if part.dxftype == 'ARC':
 				center = part.center
@@ -45,14 +45,16 @@ class pixelMap:
 				if part.end_angle < part.start_angle:
 					part.start_angle = part.start_angle - 360
 
-				center, radius = circleConversion(center, radius, offset, resolution)
-				self.housingImg = cv2.ellipse(self.housingImg, center, (radius, radius), 0, part.start_angle, part.end_angle, self.wallColor, lineWidth)
+				center, radius = circleConversion(center, radius, offset, self.resolutionPower)
+				cv2.ellipse(self.housingImg, center, (radius, radius), 0, part.start_angle, part.end_angle, self.wallColor, lineWidth1)
+				cv2.ellipse(self.contourImgPlain, center, (radius, radius), 0, part.start_angle, part.end_angle, self.wallColor, lineWidth2)
 
 			if part.dxftype == 'CIRCLE':
 				center = part.center
 				radius = part.radius
-				center, radius = circleConversion(center, radius, offset, resolution)
-				self.housingImg = cv2.circle(self.housingImg, center, radius, self.wallColor, lineWidth)
+				center, radius = circleConversion(center, radius, offset, self.resolutionPower)
+				cv2.circle(self.housingImg, center, radius, self.wallColor, lineWidth1)
+				cv2.circle(self.contourImgPlain, center, radius, self.wallColor, lineWidth2)
 
 	def inBounds(self, point):
 		(x, y) = point
@@ -87,8 +89,11 @@ class pixelMap:
 		
 		return neighbors, costDict
 
-	def getPixelArray(self):
+	def getImageArray(self):
 		return self.housingImg
+
+	def getContourArray(self):
+		return self.contourImgPlain
 
 	def findFirstPoint(self):
 		# Find smallest x in a fixed y
@@ -97,6 +102,37 @@ class pixelMap:
 				if not self.passable((xIndex, yIndex)):
 					return (xIndex, yIndex)
 
+	def getAndDrawContours(self):
+		# [Next, Previous, First_Child, Parent]
+		# approxMethod = cv2.CHAIN_APPROX_SIMPLE
+		# approxMethod = cv2.CHAIN_APPROX_TC89_L1
+		# mode = cv2.RETR_TREE
+		mode = cv2.RETR_CCOMP
+		approxMethod = cv2.CHAIN_APPROX_TC89_KCOS
+		_, contours, hierarchy = cv2.findContours(self.contourImg, mode, approxMethod)
+		print('number of contours:', len(contours))
+		edgeContourIndex = len(contours) - 2
+		firstHoleContourIndex = 1 
+		parentIndex = 3
+
+		hierarchy = hierarchy[0]
+		for index in range(0, edgeContourIndex):
+			contour = contours[index]
+			if hierarchy[index][parentIndex] == -1:
+				if len(contour) > 150:
+					percentage = 0.002
+				else:
+					percentage = 0.005
+				epsilon = percentage*cv2.arcLength(contour, True)
+				approxPoints = cv2.approxPolyDP(contour, epsilon,True)
+				approxPointsFlaten = approxPoints.ravel().reshape((len(approxPoints),2))
+				print('number of points berfore/after:', len(contour), len(approxPointsFlaten))
+
+				new = np.zeros((10**3, 15*10**2), np.uint8)
+				drawPolyline(self.housingImg, approxPointsFlaten, True)
+				drawPolyline(self.contourImgPlain, approxPointsFlaten, True)
+
+		print(hierarchy)
 
 def circleConversion(center, radius, offset, resolution):
 	center = ((int((center[0] + offset[0]) * 10**resolution)), int((center[1] + offset[1]) * 10**resolution))
@@ -143,40 +179,38 @@ def linePointsConversion(sPoint, ePoint, offset, resolution):
 
 def showImage(pixelArray, saveImg):
 	flippedImage = cv2.flip(pixelArray, 0)
+	cv2.imwrite(saveImg, flippedImage)
 	cv2.namedWindow('window', cv2.WINDOW_KEEPRATIO)
 	cv2.imshow('window', flippedImage)
 	cv2.waitKey(0)
-	cv2.imwrite(saveImg, flippedImage)
 
 def covertToNpArrayPoint(points):
 
 	return np.array(points)
 
-def drawPolyline(pixelArray, points):
+def drawPolyline(pixelArray, points, ifEnclosed):
 
-	pixelArray =  cv2.polylines(pixelArray, [points], False, 150)
-
-	return pixelArray
-
-# if __name__ == "__main__":
-# 	dxf = r"C:\Users\eltoshon\Desktop\drawings\housingPathFindTest\housingPathFindTest.dxf"
-# 	saveImg = r"C:\Users\eltoshon\Desktop\drawings\housingPathFindTest\housingPathFindTest.jpeg"
-# 	m = pixelMap(dxf)
-# 	points = covertToNpArrayPoint([(1, 5),  (5, 9), (500, 25)])
-# 	drawPolyline(m.getPixelArray(), points)
-# 	fp = m.firstPoint
-# 	print(fp)
-# # 	print(m.passable(fp))
-# # 	print(m.passable((288, 184)))
-# # 	print(m.passable((286, 184)))
-# # 	print(m.passable((287, 185)))
-# # 	print(m.passable((287, 183)))
-# 	n, c= m.getNeighbors(fp)
-# 	n = list(n)
-# 	print(n)
-# 	print(c)
-# 	print(c[(288, 184)])
-# 	print(c[n[0]])
+	cv2.polylines(pixelArray, [points], ifEnclosed, 100)
 
 
-# 	showImage(m.getPixelArray(), saveImg)
+
+if __name__ == "__main__":
+	# dxf = r"C:\Users\eltoshon\Desktop\drawings\housing\housing.dxf"
+	# saved = r"C:\Users\eltoshon\Desktop\drawings\housing\housing.jpeg"
+
+	# m = pixelMap(dxf)
+	# img = m.getImageArray()
+	# showImage(m.getImageArray(), saved)
+
+	saveImg = r"C:\Users\eltoshon\Desktop\drawings\housingTest\housingSimpleTest3.jpeg"
+	saveImgc = r"C:\Users\eltoshon\Desktop\drawings\housingTest\housingSimpleTest3contour.jpeg"
+
+	f = r"C:\Users\eltoshon\Desktop\drawings\housingTest\housingSimpleTest3.dxf"
+	m = pixelMap(f)
+	img = m.getImageArray()
+	imgC = m.getContourArray()
+
+	m.getAndDrawContours()
+
+	showImage(imgC, saveImgc)
+	showImage(img, saveImg)

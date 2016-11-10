@@ -14,12 +14,12 @@ def aStarSearch(imageMapObject, startP, endP):
         
 		if currentPoint == endP:
 			break
-		neighbors, neighborCosts = imageMapObject.getNeighbors1(currentPoint)
+		neighbors, neighborCosts = imageMapObject.getNeighbors(currentPoint)
 		for nextpoint in neighbors:
 			newGCost = costSoFar[currentPoint] + neighborCosts[nextpoint]
 			if nextpoint not in costSoFar or newGCost < costSoFar[nextpoint]:
 				costSoFar[nextpoint] = newGCost
-				priority = newGCost + heuristicE(endP, nextpoint)
+				priority = newGCost + heuristicM(endP, nextpoint)
 				frontier.push(nextpoint, priority)
 				cameFrom[nextpoint] = currentPoint
     
@@ -58,12 +58,15 @@ def reconstructPath(cameFrom, startP, goalP):
 if __name__ == "__main__":
 	start_time = time.time()
 
-	dxf = r"C:\Users\eltoshon\Desktop\drawings\housingPathFindTest\housingPathFindTest2.dxf"
-	save = r"C:\Users\eltoshon\Desktop\drawings\housingPathFindTest\housingPathFindTest2.jpeg"
+	# dxf = r"C:\Users\eltoshon\Desktop\drawings\housingPathFindTest\housingPathFindTest2.dxf"
+	# save = r"C:\Users\eltoshon\Desktop\drawings\housingPathFindTest\housingPathFindTest2.jpeg"
+	dxf = r"C:\Users\eltoshon\Desktop\drawings\housingSmall\housingSmall.dxf"
+	save = r"C:\Users\eltoshon\Desktop\drawings\housingSmall\housingSmall.jpeg"
+
 	housing = imageMap.pixelMap(dxf)
 	housingPixelArray = housing.getPixelArray()
-	startPoint = (60, 500)
-	endPoint = (370, 260)
+	startPoint = (600, 1100)
+	endPoint = (1350, 500)
 	comesFrom, costSoFar = aStarSearch(housing, startPoint, endPoint)
 	path = reconstructPath(comesFrom, startPoint, endPoint)
 	# print(path)
