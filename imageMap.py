@@ -21,6 +21,7 @@ class pixelMap:
 		self.housingMaxYInMM = 0
 		self.XYoffset = (0, 0)
 		self.XYmin = (0, 0)	
+		self.contour = []
 
 		self.getMaxAndMinXY()
 
@@ -40,7 +41,7 @@ class pixelMap:
 		offset = self.XYoffset
 		for part in entities:
 			if part.dxftype == 'LINE':  # maybe need to add polyline
-				startP, endP = linePointsConversion(part.start, part.end, offset, self.resolutionPower)
+				startP, endP = linePointsToGridConversion(part.start, part.end, offset, self.resolutionPower)
 				cv2.line(self.housingImg, startP, endP, self.wallColor, lineWidth1)
 				cv2.line(self.contourImgPlain, startP, endP, self.wallColor, lineWidth2)
 
@@ -50,14 +51,14 @@ class pixelMap:
 				if part.end_angle < part.start_angle:
 					part.start_angle = part.start_angle - 360
 
-				center, radius = circleConversion(center, radius, offset, self.resolutionPower)
+				center, radius = circlePointToGridConversion(center, radius, offset, self.resolutionPower)
 				cv2.ellipse(self.housingImg, center, (radius, radius), 0, part.start_angle, part.end_angle, self.wallColor, lineWidth1)
 				cv2.ellipse(self.contourImgPlain, center, (radius, radius), 0, part.start_angle, part.end_angle, self.wallColor, lineWidth2)
 
 			if part.dxftype == 'CIRCLE':
 				center = part.center
 				radius = part.radius
-				center, radius = circleConversion(center, radius, offset, self.resolutionPower)
+				center, radius = circlePointToGridConversion(center, radius, offset, self.resolutionPower)
 				cv2.circle(self.housingImg, center, radius, self.wallColor, lineWidth1)
 				cv2.circle(self.contourImgPlain, center, radius, self.wallColor, lineWidth2)
 
@@ -76,7 +77,6 @@ class pixelMap:
 		# if (x + y) % 2 == 0: neighbors.reverse() # aesthetics
 		neighbors = filter(self.inBounds, neighbors)
 		neighbors = filter(self.passable, neighbors)
-
 
 		return neighbors, costDict
 
@@ -143,17 +143,22 @@ class pixelMap:
 					for point in approxPointsFlaten:
 						p = p + point
 					(cX, cY), radius = cv2.minEnclosingCircle(contour)
-					cX, cY = int(cX), int(cY)
-					print(approxPointsFlaten)
+					cX, cY, radius= int(cX), int(cY), int(radius)
 					if abs(cX - int(p[0]/numOfApproxPoints)) < 6 and abs(cY - int(p[1]/numOfApproxPoints)) < 6:
-						cv2.circle(self.contourImgPlain, (cX,cY), int(radius), 100, 2) ################################### add to a data structure for output
-						cv2.circle(self.housingImg, (cX,cY), int(radius), 100, 2)
+						center = (cX, cY)
+						cv2.circle(self.contourImgPlain, center, radius, 100, 2) ################################### add to a data structure for output
+						cv2.circle(self.housingImg, center, radius, 100, 2)
+						realCenter, realRadius = circleGridToPointConversion(center, radius, self.XYoffset, self.resolutionPower)
+						self.contour.append({'Shape': 'CIRCLE', 'Center': realCenter, 'Radius': realRadius})
+						# 'DispenseVelocity': 0.5, 'Angle': math.pi*2*.98
 					else:
 						drawPolyline(self.contourImgPlain, approxPointsFlaten, True) ################################### add to a data structure for output
 						drawPolyline(self.housingImg, approxPointsFlaten, True)
+						self.contour.append({'Shape': 'POLYLINE', 'LINES': polyPointsToLines(approxPointsFlaten, self.XYoffset, self.resolutionPower)})
 				else:
 					drawPolyline(self.contourImgPlain, approxPointsFlaten, True) ################################### add to a data structure for output
 					drawPolyline(self.housingImg, approxPointsFlaten, True)
+					self.contour.append({'Shape': 'POLYLINE', 'LINES': polyPointsToLines(approxPointsFlaten, self.XYoffset, self.resolutionPower)})
 
 				# if len(approxPointsFlaten) <13 and len(approxPointsFlaten)> 7: ?????????????????????????????????/
 				# 	x,y,w,h = cv2.boundingRect(contour) #### WORKs IF APPROXpOINTSfLATEN is between 7 and 13
@@ -161,7 +166,7 @@ class pixelMap:
 				# 	cv2.rectangle(self.contourImgPlain,(x,y),(x+w,y+h),100,2)
 			# break
 
-		# print(approxPointsFlaten)
+		print(self.contour)
 
 	def getMaxAndMinXY(self):
 		entities = self.dxfObject.entities
@@ -197,14 +202,20 @@ class pixelMap:
 			yOffset = int(-(yMin)) + 2
 		elif yMin > 5:
 			yOffset = 5 - yMin 
+
 		self.XYmin = (xMin, yMin)
 		self.XYoffset = (xOffset, yOffset)
 		self.housingMaxXInMM = int(xMax - xMin) + 3
 		self.housingMaxYInMM = int(yMax - yMin) + 3
 		print(self.XYmin, self.XYoffset)
 
-def circleConversion(center, radius, offset, resolution):
-	center = ((int((center[0] + offset[0]) * 10**resolution)), int((center[1] + offset[1]) * 10**resolution))
+def circlePointToGridConversion(center, radius, offset, resolution):
+	cX, cY = (center[0] + offset[0]) * 10**resolution, (center[1] + offset[1]) * 10**resolution
+	xInt, xReminder = int(cX), cX*10%10
+	yInt, yReminder = int(cY), cY*10%10
+	x = xInt + 1 if xReminder >= 5 else xInt
+	y = yInt + 1 if yReminder >= 5 else yInt
+	center = (x, y)
 	radius = radius * 10**(resolution)
 	if radius.is_integer():
 		radius = int(radius)
@@ -212,7 +223,13 @@ def circleConversion(center, radius, offset, resolution):
 		radius = int(radius) + 1
 	return center, radius
 
-def linePointsConversion(sPoint, ePoint, offset, resolution):
+def circleGridToPointConversion(center, radius, offset, resolution):
+	center = ((center[0]/10**resolution - offset[0]), center[1]/10**resolution - offset[1])
+	radius = radius/10**resolution
+
+	return center, radius
+
+def linePointsToGridConversion(sPoint, ePoint, offset, resolution):
 	sPointX = (sPoint[0] + offset[0]) * 10**(resolution+1)
 	sPointY = (sPoint[1] + offset[1]) * 10**(resolution+1)
 	ePointX = (ePoint[0] + offset[0]) * 10**(resolution+1)
@@ -245,6 +262,40 @@ def linePointsConversion(sPoint, ePoint, offset, resolution):
 		sPointY = int(sPointY/10)
 
 	return (sPointX, sPointY), (ePointX, ePointY)
+
+def polyPointsToLines(polyPoints, offset, resolution):
+	lines = []
+	numPoints = len(polyPoints)
+	firstAndEndPoint = gridPointToRealPoint(polyPoints[0], offset, resolution)
+	for index in range(0, len(polyPoints)):
+		if index == numPoints - 1:
+			realPoint = gridPointToRealPoint(polyPoints[index],  offset, resolution)
+			length, angle = getLineLengthAngle(realPoint, firstAndEndPoint)
+			lines.append({'Point': polyPoints[index], 'Length': length, 'Angle': angle})
+		else:
+			realPoint1 = gridPointToRealPoint(polyPoints[index],  offset, resolution)
+			realPoint2 = gridPointToRealPoint(polyPoints[index + 1],  offset, resolution)
+			length, angle = getLineLengthAngle(realPoint1, realPoint2)
+			lines.append({'Point': polyPoints[index], 'Length': length, 'Angle': angle})
+
+	return lines
+
+def gridPointToRealPoint(point, offset, resolution):
+	return (point[0]/10**resolution - offset[0], point[1]/10**resolution - offset[1])
+
+def getLineLengthAngle(p1, p2):
+	deltaY = p2[1] - p1[1]
+	deltaX = p2[0] - p1[0]
+	length = math.sqrt(deltaX**2 + deltaY**2)
+	angle = math.atan2(deltaY, deltaX) # in radian ???? POSITIVE OR NEGATIVE
+
+	return length, angle
+
+def gridPointToRealPoint(point, offset, resolution):
+	x = point[0]/10**resolution - offset[0]
+	y = point[1]/10**resolution - offset[1]
+
+	return (x, y)
 
 def showImage(pixelArray, saveImg):
 	flippedImage = cv2.flip(pixelArray, 0)
