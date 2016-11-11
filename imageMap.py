@@ -271,12 +271,12 @@ def polyPointsToLines(polyPoints, offset, resolution):
 		if index == numPoints - 1:
 			realPoint = gridPointToRealPoint(polyPoints[index],  offset, resolution)
 			length, angle = getLineLengthAngle(realPoint, firstAndEndPoint)
-			lines.append({'Point': polyPoints[index], 'Length': length, 'Angle': angle})
+			lines.append({'Point': realPoint, 'Length': length, 'Angle': angle})
 		else:
 			realPoint1 = gridPointToRealPoint(polyPoints[index],  offset, resolution)
 			realPoint2 = gridPointToRealPoint(polyPoints[index + 1],  offset, resolution)
 			length, angle = getLineLengthAngle(realPoint1, realPoint2)
-			lines.append({'Point': polyPoints[index], 'Length': length, 'Angle': angle})
+			lines.append({'Point': realPoint1, 'Length': length, 'Angle': angle})
 
 	return lines
 
