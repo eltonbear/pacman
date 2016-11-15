@@ -51,32 +51,34 @@ def reconstructPath(cameFrom, startP, goalP):
         current = cameFrom[current]
         path.append(current)
     path.append(startP) # optional
+
     path.reverse() # optional
+
     return path
 
 
-if __name__ == "__main__":
-	start_time = time.time()
+# if __name__ == "__main__":
+# 	start_time = time.time()
 
-	# dxf = r"C:\Users\eltoshon\Desktop\drawings\housingPathFindTest\housingPathFindTest2.dxf"
-	# save = r"C:\Users\eltoshon\Desktop\drawings\housingPathFindTest\housingPathFindTest2.jpeg"
-	dxf = r"C:\Users\eltoshon\Desktop\drawings\housingSmall\housingSmall.dxf"
-	save = r"C:\Users\eltoshon\Desktop\drawings\housingSmall\housingSmall.jpeg"
+# 	# dxf = r"C:\Users\eltoshon\Desktop\drawings\housingPathFindTest\housingPathFindTest2.dxf"
+# 	# save = r"C:\Users\eltoshon\Desktop\drawings\housingPathFindTest\housingPathFindTest2.jpeg"
+# 	dxf = r"C:\Users\eltoshon\Desktop\drawings\housingSmall\housingSmall.dxf"
+# 	save = r"C:\Users\eltoshon\Desktop\drawings\housingSmall\housingSmall.jpeg"
 
-	housing = imageMap.pixelMap(dxf)
-	housingPixelArray = housing.getPixelArray()
-	startPoint = (600, 1100)
-	endPoint = (1350, 500)
-	comesFrom, costSoFar = aStarSearch(housing, startPoint, endPoint)
-	path = reconstructPath(comesFrom, startPoint, endPoint)
-	# print(path)
-	# print(len(path))
-	points = imageMap.covertToNpArrayPoint(path)
-	# print(comesFrom)
-	imageMap.drawPolyline(housingPixelArray, points)
-	imageMap.showImage(housingPixelArray, save)
-	end_time = time.time()
-	print(end_time- start_time)
-	print(housing.firstPoint)
+# 	housing = imageMap.pixelMap(dxf)
+# 	housingPixelArray = housing.getPixelArray()
+# 	startPoint = (600, 1100)
+# 	endPoint = (1350, 500)
+# 	comesFrom, costSoFar = aStarSearch(housing, startPoint, endPoint)
+# 	path = reconstructPath(comesFrom, startPoint, endPoint)
+# 	# print(path)
+# 	# print(len(path))
+# 	points = imageMap.covertToNpArrayPoint(path)
+# 	# print(comesFrom)
+# 	imageMap.drawPolyline(housingPixelArray, points)
+# 	imageMap.showImage(housingPixelArray, save)
+# 	end_time = time.time()
+# 	print(end_time- start_time)
+# 	print(housing.firstPoint)
 
 

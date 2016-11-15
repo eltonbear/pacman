@@ -17,16 +17,15 @@ class pixelMap:
 		self.backGrdColor = 0
 		self.wallColor = 255
 		self.resolutionPower = 2
-		self.housingMaxXInMM = 0
-		self.housingMaxYInMM = 0
+		self.xBoundary = 0
+		self.yBoundary = 0
 		self.XYoffset = (0, 0)
-		self.XYmin = (0, 0)	
 		self.contours = []
 
 		self.getMaxAndMinXY()
 
-		self.arrayXlen = self.housingMaxXInMM * 10 ** self.resolutionPower 
-		self.arrayYlen = self.housingMaxYInMM * 10 ** self.resolutionPower 
+		self.arrayXlen = (int(self.xBoundary[1]-self.xBoundary[0]) + 3 )* 10 ** self.resolutionPower 
+		self.arrayYlen = (int(self.yBoundary[1]-self.yBoundary[0]) + 3 )* 10 ** self.resolutionPower 
 
 		self.housingFatImg = np.zeros((self.arrayYlen, self.arrayXlen), np.uint8) #### might use his for filter
 		self.contourImgPlain = np.copy(self.housingFatImg)
@@ -137,7 +136,7 @@ class pixelMap:
 				else:
 					percentage = 0.009
 				epsilon = percentage*cv2.arcLength(contour, True)
-				approxPoints = cv2.approxPolyDP(contour, epsilon,True)
+				approxPoints = cv2.approxPolyDP(contour, epsilon, True)
 				approxPointsFlaten = approxPoints.ravel().reshape((len(approxPoints),2))
 				numOfApproxPoints = len(approxPoints)
 				# print('index/number of points berfore/after:', index, numOfvertice, numOfApproxPoints)
@@ -151,18 +150,18 @@ class pixelMap:
 					if abs(cX - int(p[0]/numOfApproxPoints)) < 6 and abs(cY - int(p[1]/numOfApproxPoints)) < 6:
 						center = (cX, cY)
 						cv2.circle(self.contourImgPlain, center, radius, 100, 2)
-						# cv2.circle(self.housingFatImg, center, radius, 100, 2) # not needed
+						cv2.circle(self.housingFatImg, center, radius, 100, 2) # might not needed
 						realCenter, realRadius = circleGridToPointConversion(center, radius, self.XYoffset, self.resolutionPower)
-						self.contours.append({'Shape': 'CIRCLE', 'Center': realCenter, 'Radius': realRadius})
+						self.contours.append({'Shape': 'CIRCLE', 'Center': realCenter, 'Radius': realRadius, 'StartEndGridPoint': (cX + radius, cY)})
 						# 'DispenseVelocity': 0.5, 'Angle': math.pi*2*.98
 					else:
-						drawPolyline(self.contourImgPlain, approxPointsFlaten, True)
-						# drawPolyline(self.housingFatImg, approxPointsFlaten, True) # not needed
-						self.contours.append({'Shape': 'POLYLINE', 'LINES': polyPointsToLines(approxPointsFlaten, self.XYoffset, self.resolutionPower), 'StartEndGridPoint': approxPointsFlaten[0]})
+						drawPolyline(self.contourImgPlain, approxPointsFlaten, True, 100, 2)
+						drawPolyline(self.housingFatImg, approxPointsFlaten, True, 100, 2) # might not needed
+						self.contours.append({'Shape': 'POLYLINE', 'LINES': polyPointsToLines(approxPointsFlaten, self.XYoffset, self.resolutionPower), 'StartEndGridPoint': (approxPointsFlaten[0][0],approxPointsFlaten[0][1])})
 				else:
-					drawPolyline(self.contourImgPlain, approxPointsFlaten, True)
-					# drawPolyline(self.housingFatImg, approxPointsFlaten, True) # not needed
-					self.contours.append({'Shape': 'POLYLINE', 'LINES': polyPointsToLines(approxPointsFlaten, self.XYoffset, self.resolutionPower), 'StartEndGridPoint': approxPointsFlaten[0]})
+					drawPolyline(self.contourImgPlain, approxPointsFlaten, True, 100, 2)
+					drawPolyline(self.housingFatImg, approxPointsFlaten, True, 100, 2) # might not needed
+					self.contours.append({'Shape': 'POLYLINE', 'LINES': polyPointsToLines(approxPointsFlaten, self.XYoffset, self.resolutionPower), 'StartEndGridPoint': (approxPointsFlaten[0][0],approxPointsFlaten[0][1])})
 
 				# if len(approxPointsFlaten) <13 and len(approxPointsFlaten)> 7: ?????????????????????????????????/
 				# 	x,y,w,h = cv2.boundingRect(contour) #### WORKs IF APPROXpOINTSfLATEN is between 7 and 13
@@ -186,7 +185,7 @@ class pixelMap:
 				else:
 					xMax, yMax = max(xMax, x1, x2), max(yMax, y1, y2)
 					xMin, yMin= min(xMin, x1, x2), min(yMin, y1, y2)
-			elif part.dxftype == 'ARC' or part.dxftype == 'CIRCLE':
+			elif part.dxftype == 'CIRCLE':
 				cx, cy, R = part.center[0], part.center[1], part.radius
 				xRight, yUp = cx + R, cy + R
 				xLeft, yDown = cx - R, cy - R
@@ -196,6 +195,23 @@ class pixelMap:
 				else:
 					xMax, yMax = max(xMax, xRight), max(yMax, yUp)
 					xMin, yMin= min(xMin, xLeft), min(yMin, yDown)
+			elif part.dxftype == 'ARC':
+				cx, cy, R = part.center[0], part.center[1], part.radius
+				f = part.start_angle
+				g = part.end_angle
+				if part.end_angle < part.start_angle:
+					part.start_angle = part.start_angle - 360
+
+				angles =  np.linspace(part.start_angle, part.end_angle, 7)
+				x = [R*math.cos(math.radians(a)) + cx for a in angles]
+				y = [R*math.sin(math.radians(a)) + cy for a in angles]
+
+				if partIndex == 0:
+					xMax, yMax = max(x), max(y)
+					xMin, yMin = min(x), min(y)
+				else:
+					xMax, yMax = max(xMax, max(x)), max(yMax, max(y))
+					xMin, yMin= min(xMin, min(x)), min(yMin, min(y))
 
 		xOffset, yOffset = 0, 0
 		if xMin <= 0:
@@ -207,11 +223,10 @@ class pixelMap:
 		elif yMin > 5:
 			yOffset = 5 - yMin 
 
-		self.XYmin = (xMin, yMin)
 		self.XYoffset = (xOffset, yOffset)
-		self.housingMaxXInMM = int(xMax - xMin) + 3
-		self.housingMaxYInMM = int(yMax - yMin) + 3
-		print(self.XYmin, self.XYoffset)
+		self.xBoundary = (xMin, xMax)
+		self.yBoundary = (yMin, yMax)
+		print(xMin,yMin)
 
 def circlePointToGridConversion(center, radius, offset, resolution):
 	cX, cY = (center[0] + offset[0]) * 10**resolution, (center[1] + offset[1]) * 10**resolution
@@ -312,21 +327,30 @@ def covertToNpArrayPoint(points):
 
 	return np.array(points)
 
-def drawPolyline(pixelArray, points, ifEnclosed):
+def drawPolyline(pixelArray, points, ifEnclosed, color, width):
 
-	cv2.polylines(pixelArray, [points], ifEnclosed, 100, 2)
+	cv2.polylines(pixelArray, [points], ifEnclosed, color, width)
+
+
+# def sortContour(contours):
+
+					 
 
 
 
-# if __name__ == "__main__":
-# 	f = r"C:\Users\eltoshon\Desktop\drawings\housing\housing.dxf"
-# 	saveImgc = r"C:\Users\eltoshon\Desktop\drawings\housing\housingContour.jpeg"
-# 	saveImg = r"C:\Users\eltoshon\Desktop\drawings\housing\housing.jpeg"
-# 	m = pixelMap(f)
-# 	img = m.getImageArray()
-# 	imgC = m.getDispensedImage()
-# 	m.getAndDrawContours()
-# 	contours = m.getContours()
-# 	print(contours)
-# 	showImage(imgC, saveImgc)
+
+if __name__ == "__main__":
+	# f = r"C:\Users\eltoshon\Desktop\drawings\housing\hsg_top_notched.dxf"
+	# saveImgc = r"C:\Users\eltoshon\Desktop\drawings\housing\hsg_top_notchedCon.jpeg"
+	f = r"C:\Users\eltoshon\Desktop\drawings\housing\housing.dxf"
+	saveImgc = r"C:\Users\eltoshon\Desktop\drawings\housing\housingContour.jpeg"
+
+
+	m = pixelMap(f)
+	# img = m.getImageArray()
+	imgC = m.getDispensedImage()
+	# m.getAndDrawContours()
+	# contours = m.getContours()
+	# print(contours)
+	showImage(imgC, saveImgc)
 	# showImage(img, saveImg)
