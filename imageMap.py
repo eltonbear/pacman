@@ -319,11 +319,11 @@ def gridPointToRealPoint(point, offset, resolution):
 
 def sortContour(contours, arrayYlength):
 	sortedContours = []
-	numOfLists = 6
+	numOfLists = 10
 	numOfBoundaries = numOfLists + 1
 	contourLists = [[] for count in range(0, numOfLists)]
 	boundary = np.linspace(arrayYlength, 0, numOfBoundaries)
-	print(boundary)
+
 	for contour in contours:
 		y = contour['StartEndGridPoint'][1]
 		for boundaryIndex in range(1, numOfBoundaries):
@@ -334,22 +334,19 @@ def sortContour(contours, arrayYlength):
 
 	for contourList in contourLists:
 		num = len(contourList)
-		if not sortedContours:
-			sortedContours = contourList
-		else:
-			if num == 1:
-				sortedContours = sortedContours + contourList
-			elif num > 1:
-				sortedSubContourList = sorted(contourList, key=lambda contour: contour['StartEndGridPoint'][0])
-				xPrev = sortedContours[-1]['StartEndGridPoint'][0]
-				xFirst = sortedSubContourList[0]['StartEndGridPoint'][0] # samller x
-				xLast = sortedSubContourList[-1]['StartEndGridPoint'][0] # larger x
-				if abs(xFirst - xPrev) <= abs(xLast - xPrev):
-					sortedContours = sortedContours + sortedSubContourList
-				else:
-					sortedSubContourList.reverse()
-					sortedContours = sortedContours + sortedSubContourList		
-					
+		if num == 1:
+			sortedContours = sortedContours + contourList
+		elif num > 1:
+			sortedSubContourList = sorted(contourList, key=lambda contour: contour['StartEndGridPoint'][0])
+			xPrev = sortedContours[-1]['StartEndGridPoint'][0]
+			xFirst = sortedSubContourList[0]['StartEndGridPoint'][0] # samller x
+			xLast = sortedSubContourList[-1]['StartEndGridPoint'][0] # larger x
+			if abs(xFirst - xPrev) <= abs(xLast - xPrev):
+				sortedContours = sortedContours + sortedSubContourList
+			else:
+				sortedSubContourList.reverse()
+				sortedContours = sortedContours + sortedSubContourList		
+
 	return sortedContours	
 
 
