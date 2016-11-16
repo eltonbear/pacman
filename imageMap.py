@@ -98,8 +98,10 @@ class pixelMap:
 		return self.contourImgPlain
 
 	def getContours(self):
-
 		return self.contours
+
+	def getArrayDimension(self):
+		return (self.arrayXlen, self.arrayYlen)
 
 	def findFirstPoint(self):
 		# Find smallest x in a fixed y
@@ -226,7 +228,6 @@ class pixelMap:
 		self.XYoffset = (xOffset, yOffset)
 		self.xBoundary = (xMin, xMax)
 		self.yBoundary = (yMin, yMax)
-		print(xMin,yMin)
 
 def circlePointToGridConversion(center, radius, offset, resolution):
 	cX, cY = (center[0] + offset[0]) * 10**resolution, (center[1] + offset[1]) * 10**resolution
@@ -316,6 +317,42 @@ def gridPointToRealPoint(point, offset, resolution):
 
 	return (x, y)
 
+def sortContour(contours, arrayYlength):
+	sortedContours = []
+	numOfLists = 6
+	numOfBoundaries = numOfLists + 1
+	contourLists = [[] for count in range(0, numOfLists)]
+	boundary = np.linspace(arrayYlength, 0, numOfBoundaries)
+	print(boundary)
+	for contour in contours:
+		y = contour['StartEndGridPoint'][1]
+		for boundaryIndex in range(1, numOfBoundaries):
+			if y >= boundary[boundaryIndex] and y < boundary[boundaryIndex-1]:
+				# print(y, boundary[boundaryIndex])
+				listIndex = boundaryIndex - 1
+				contourLists[listIndex].append(contour)
+
+	for contourList in contourLists:
+		num = len(contourList)
+		if not sortedContours:
+			sortedContours = contourList
+		else:
+			if num == 1:
+				sortedContours = sortedContours + contourList
+			elif num > 1:
+				sortedSubContourList = sorted(contourList, key=lambda contour: contour['StartEndGridPoint'][0])
+				xPrev = sortedContours[-1]['StartEndGridPoint'][0]
+				xFirst = sortedSubContourList[0]['StartEndGridPoint'][0] # samller x
+				xLast = sortedSubContourList[-1]['StartEndGridPoint'][0] # larger x
+				if abs(xFirst - xPrev) <= abs(xLast - xPrev):
+					sortedContours = sortedContours + sortedSubContourList
+				else:
+					sortedSubContourList.reverse()
+					sortedContours = sortedContours + sortedSubContourList		
+					
+	return sortedContours	
+
+
 def showImage(pixelArray, saveImg):
 	flippedImage = cv2.flip(pixelArray, 0)
 	cv2.imwrite(saveImg, flippedImage)
@@ -332,25 +369,22 @@ def drawPolyline(pixelArray, points, ifEnclosed, color, width):
 	cv2.polylines(pixelArray, [points], ifEnclosed, color, width)
 
 
-# def sortContour(contours):
-
-					 
-
-
-
-
-if __name__ == "__main__":
-	# f = r"C:\Users\eltoshon\Desktop\drawings\housing\hsg_top_notched.dxf"
-	# saveImgc = r"C:\Users\eltoshon\Desktop\drawings\housing\hsg_top_notchedCon.jpeg"
-	f = r"C:\Users\eltoshon\Desktop\drawings\housing\housing.dxf"
-	saveImgc = r"C:\Users\eltoshon\Desktop\drawings\housing\housingContour.jpeg"
+# if __name__ == "__main__":
+# 	# f = r"C:\Users\eltoshon\Desktop\drawings\housing\hsg_top_notched.dxf"
+# 	# saveImgc = r"C:\Users\eltoshon\Desktop\drawings\housing\hsg_top_notchedCon.jpeg"
+# 	f = r"C:\Users\eltoshon\Desktop\drawings\housing\housing.dxf"
+# 	saveImgc = r"C:\Users\eltoshon\Desktop\drawings\housing\housingContour.jpeg"
 
 
-	m = pixelMap(f)
-	# img = m.getImageArray()
-	imgC = m.getDispensedImage()
-	# m.getAndDrawContours()
-	# contours = m.getContours()
-	# print(contours)
-	showImage(imgC, saveImgc)
-	# showImage(img, saveImg)
+# 	m = pixelMap(f)
+# 	# img = m.getImageArray()
+# 	imgC = m.getDispensedImage()
+# 	m.getAndDrawContours()
+# 	contours = m.getContours()
+# 	_, yLen = m.getArrayDimension()
+# 	print('y:',  yLen)
+# 	# print(contours)
+# 	sortContour(contours, yLen)
+
+# 	showImage(imgC, saveImgc)
+# 	# showImage(img, saveImg)
