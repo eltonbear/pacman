@@ -91,7 +91,7 @@ class pixelMap:
 		
 		return neighbors, costDict
 
-	def getImageArray(self): #####??????????????????
+	def getCalculationImage(self): #####??????????????????
 		return self.housingFatImg
 
 	def getDispensedImage(self):
@@ -102,6 +102,12 @@ class pixelMap:
 
 	def getArrayDimension(self):
 		return (self.arrayXlen, self.arrayYlen)
+
+	def getOffset(self):
+		return self.XYoffset
+
+	def getResolutionPower(self):
+		return self.resolutionPower
 
 	def findFirstPoint(self):
 		# Find smallest x in a fixed y
@@ -311,11 +317,11 @@ def getLineLengthAngle(p1, p2):
 
 	return length, angle
 
-def gridPointToRealPoint(point, offset, resolution):
-	x = point[0]/10**resolution - offset[0]
-	y = point[1]/10**resolution - offset[1]
+# def gridPointToRealPoint(point, offset, resolution):
+# 	x = point[0]/10**resolution - offset[0]
+# 	y = point[1]/10**resolution - offset[1]
 
-	return (x, y)
+# 	return (x, y)
 
 def sortContour(contours, arrayYlength):
 	sortedContours = []
@@ -365,6 +371,12 @@ def drawPolyline(pixelArray, points, ifEnclosed, color, width):
 
 	cv2.polylines(pixelArray, [points], ifEnclosed, color, width)
 
+def drawPolyDots(pixelArray, ApproxPoints, color):
+	for points in ApproxPoints:
+		x, y = points[0][0], points[0][1]
+		cv2.circle(pixelArray, (x, y), 0, color, 1)
+
+
 
 # if __name__ == "__main__":
 # 	# f = r"C:\Users\eltoshon\Desktop\drawings\housing\hsg_top_notched.dxf"
@@ -374,7 +386,7 @@ def drawPolyline(pixelArray, points, ifEnclosed, color, width):
 
 
 # 	m = pixelMap(f)
-# 	# img = m.getImageArray()
+# 	# img = m.getCalculationImage()
 # 	imgC = m.getDispensedImage()
 # 	m.getAndDrawContours()
 # 	contours = m.getContours()
