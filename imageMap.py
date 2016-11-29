@@ -29,7 +29,7 @@ class pixelMap:
 
 		self.housingFatImg = np.zeros((self.arrayYlen, self.arrayXlen), np.uint8) #### might use his for filter
 		self.contourImgPlain = np.copy(self.housingFatImg)
-		self.drawPartsFromDxf(93, 2)
+		self.drawPartsFromDxf(92, 2)
 		
 	def drawPartsFromDxf(self, lineWidth1, lineWidth2):
 		# line width = 1 --> 1 pixel
@@ -138,11 +138,11 @@ class pixelMap:
 
 			if hierarchy[index][parentIndex] == -1 and numOfvertice > 2 and not contour is outerMostContour:
 				if numOfvertice > 150:
-					percentage = 0.006
+					percentage = 0.0035
 				elif numOfvertice < 60:
 					percentage = 0.03
 				else:
-					percentage = 0.009
+					percentage = 0.0065
 				epsilon = percentage*cv2.arcLength(contour, True)
 				approxPoints = cv2.approxPolyDP(contour, epsilon, True)
 				approxPointsFlaten = approxPoints.ravel().reshape((len(approxPoints),2))
@@ -329,29 +329,31 @@ def sortContour(contours, arrayYlength):
 	numOfBoundaries = numOfLists + 1
 	contourLists = [[] for count in range(0, numOfLists)]
 	boundary = np.linspace(arrayYlength, 0, numOfBoundaries)
-
 	for contour in contours:
 		y = contour['StartEndGridPoint'][1]
 		for boundaryIndex in range(1, numOfBoundaries):
 			if y >= boundary[boundaryIndex] and y < boundary[boundaryIndex-1]:
-				# print(y, boundary[boundaryIndex])
 				listIndex = boundaryIndex - 1
 				contourLists[listIndex].append(contour)
 
 	for contourList in contourLists:
 		num = len(contourList)
+		print('list: ', x)
 		if num == 1:
 			sortedContours = sortedContours + contourList
 		elif num > 1:
 			sortedSubContourList = sorted(contourList, key=lambda contour: contour['StartEndGridPoint'][0])
-			xPrev = sortedContours[-1]['StartEndGridPoint'][0]
-			xFirst = sortedSubContourList[0]['StartEndGridPoint'][0] # samller x
-			xLast = sortedSubContourList[-1]['StartEndGridPoint'][0] # larger x
-			if abs(xFirst - xPrev) <= abs(xLast - xPrev):
-				sortedContours = sortedContours + sortedSubContourList
+			if sortedContours:
+				xPrev = sortedContours[-1]['StartEndGridPoint'][0]
+				xFirst = sortedSubContourList[0]['StartEndGridPoint'][0] # samller x
+				xLast = sortedSubContourList[-1]['StartEndGridPoint'][0] # larger x
+				if abs(xFirst - xPrev) <= abs(xLast - xPrev):
+					sortedContours = sortedContours + sortedSubContourList
+				else:
+					sortedSubContourList.reverse()
+					sortedContours = sortedContours + sortedSubContourList
 			else:
-				sortedSubContourList.reverse()
-				sortedContours = sortedContours + sortedSubContourList		
+				sortedContours = sortedContours + sortedSubContourList
 
 	return sortedContours	
 
