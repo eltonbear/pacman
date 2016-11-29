@@ -116,11 +116,17 @@ class pixelMap:
 				if not self.passable((xIndex, yIndex)):
 					return (xIndex, yIndex)
 
-	def getAndDrawContours(self):
+	def getAndDrawContours(self, shape):
 		# [Next, Previous, First_Child, Parent]
 		# approxMethod = cv2.CHAIN_APPROX_SIMPLE
 		# approxMethod = cv2.CHAIN_APPROX_TC89_L1
 		# mode = cv2.RETR_TREE
+		if shape == 'nu':
+			percentage1 = 0.0035
+			percentage3 = 0.0065
+		elif shape == 'u':
+			percentage1 = 0.009
+			percentage3 = 0.008
 		mode = cv2.RETR_CCOMP
 		approxMethod = cv2.CHAIN_APPROX_TC89_KCOS
 		housingFatImgForContourFinding = np.copy(self.housingFatImg)
@@ -138,11 +144,11 @@ class pixelMap:
 
 			if hierarchy[index][parentIndex] == -1 and numOfvertice > 2 and not contour is outerMostContour:
 				if numOfvertice > 150:
-					percentage = 0.0035
+					percentage = percentage1
 				elif numOfvertice < 60:
 					percentage = 0.03
 				else:
-					percentage = 0.0065
+					percentage = percentage3
 				epsilon = percentage*cv2.arcLength(contour, True)
 				approxPoints = cv2.approxPolyDP(contour, epsilon, True)
 				approxPointsFlaten = approxPoints.ravel().reshape((len(approxPoints),2))
