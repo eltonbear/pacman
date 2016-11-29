@@ -338,7 +338,6 @@ def sortContour(contours, arrayYlength):
 
 	for contourList in contourLists:
 		num = len(contourList)
-		print('list: ', x)
 		if num == 1:
 			sortedContours = sortedContours + contourList
 		elif num > 1:
