@@ -34,6 +34,7 @@ class pixelMap:
 	def drawPartsFromDxf(self, lineWidth1, lineWidth2):
 		# line width = 1 --> 1 pixel
 		# line width = 94-100 --> 50 pixel # 93 for now
+		# line width = 92 --> 0.45 mm
 		entities = self.dxfObject.entities
 		offset = self.XYoffset
 		for part in entities:
@@ -164,18 +165,17 @@ class pixelMap:
 					if abs(cX - int(p[0]/numOfApproxPoints)) < 6 and abs(cY - int(p[1]/numOfApproxPoints)) < 6:
 						center = (cX, cY)
 						cv2.circle(self.contourImgPlain, center, radius, 100, 2)
-						cv2.circle(self.housingFatImg, center, radius, 100, 2) # might not needed
+						cv2.circle(self.housingFatImg, center, radius, 100, 50) # might not needed
 						realCenter, realRadius = circleGridToPointConversion(center, radius, self.XYoffset, self.resolutionPower)
 						self.contours.append({'Shape': 'CIRCLE', 'Center': realCenter, 'Radius': realRadius, 'StartEndGridPoint': (cX + radius, cY)})
 						# 'DispenseVelocity': 0.5, 'Angle': math.pi*2*.98
 					else:
 						drawPolyline(self.contourImgPlain, approxPointsFlaten, True, 100, 2)
-						drawPolyline(self.housingFatImg, approxPointsFlaten, True, 100, 2) # might not needed
+						drawPolyline(self.housingFatImg, approxPointsFlaten, True, 100, 50) # might not needed
 						self.contours.append({'Shape': 'POLYLINE', 'LINES': polyPointsToLines(approxPointsFlaten, self.XYoffset, self.resolutionPower), 'StartEndGridPoint': (approxPointsFlaten[0][0],approxPointsFlaten[0][1])})
 				else:
 					drawPolyline(self.contourImgPlain, approxPointsFlaten, True, 100, 2)
-					drawPolyline(self.housingFatImg, approxPointsFlaten, True, 100, 2) # might not needed
-					self.contours.append({'Shape': 'POLYLINE', 'LINES': polyPointsToLines(approxPointsFlaten, self.XYoffset, self.resolutionPower), 'StartEndGridPoint': (approxPointsFlaten[0][0],approxPointsFlaten[0][1])})
+					drawPolyline(self.housingFatImg, approxPointsFlaten, True, 100, 50) # might not needed					self.contours.append({'Shape': 'POLYLINE', 'LINES': polyPointsToLines(approxPointsFlaten, self.XYoffset, self.resolutionPower), 'StartEndGridPoint': (approxPointsFlaten[0][0],approxPointsFlaten[0][1])})
 
 				# if len(approxPointsFlaten) <13 and len(approxPointsFlaten)> 7: ?????????????????????????????????/
 				# 	x,y,w,h = cv2.boundingRect(contour) #### WORKs IF APPROXpOINTSfLATEN is between 7 and 13

@@ -9,7 +9,6 @@ def linkContours(contours, imageMapObject):
 	presentationImage = imageMapObject.getDispensedImage()
 	offset = imageMapObject.getOffset()
 	resolution = imageMapObject.getResolutionPower()
-	np = 0
 	for index in range(0, len(contours)):
 		dispenseSeq.append(contours[index])
 		if index == 0:
@@ -21,7 +20,6 @@ def linkContours(contours, imageMapObject):
 			points = imageMap.covertToNpArrayPoint(path)
 			epsilon = 0.009*cv2.arcLength(points, True)
 			approxPoints = cv2.approxPolyDP(points, epsilon, True)
-			np = np + len(approxPoints)
 			# mark dots
 			# imageMap.drawPolyDots(calculationImage, approxPoints, 200)
 			dispenseSeq.append({'Shape':'POLYDOTS', 'Points': [imageMap.gridPointToRealPoint(point[0], offset, resolution) for point in approxPoints]})
@@ -29,7 +27,6 @@ def linkContours(contours, imageMapObject):
 			imageMap.drawPolyline(presentationImage, approxPoints, False, 200, 1)
 
 			p = pNext
-	print(np)
 	return dispenseSeq
 
 def linkContoursTest(contours, imageMapObject):
